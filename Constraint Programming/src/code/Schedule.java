@@ -129,7 +129,7 @@ public class Schedule {
 	}
 	public static void main(String[] args) throws FileNotFoundException {
 		Schedule app = new Schedule();
-		app.input("src\\code\\data_6.txt");
+		app.input("data_6.txt");
         app.solve();
 	}
 }
