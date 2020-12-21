@@ -1,8 +1,12 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-const int REPS = 100;
+const int REPS = 10;
 const int NITERATIONS = 1000;
+const int BASE = 29111999;
+const int MOD = 1000000007;
+const int PATIENT = 10;
+const int TABU_LENGTH = 100;
 
 int n;
 vector<vector<int>> c;
@@ -10,8 +14,10 @@ vector<vector<int>> c;
 struct Solution {
     vector<vector<pair<int, int>>> round;
     vector<vector<int>> pos;
+    int n;
 
     Solution(int n) {
+        this->n = n;
         round.resize(2 * n);
         pos.resize(2 * n, vector<int>(n, 0));
     }
@@ -29,6 +35,22 @@ struct Solution {
         int res = 0;
         for (int i = 1; i < 2 * n; i++) {
             for (int j = 0; j < n; j++) res += c[pos[i - 1][j]][pos[i][j]];
+        }
+        return res;
+    }
+
+    int _hash() {
+        vector<int> toHash;
+        for (int i = 0; i < 2 * n; i++) {
+            sort(round[i].begin(), round[i].end());
+            for (auto game : round[i]) {
+                toHash.push_back(game.first);
+                toHash.push_back(game.second);
+            }
+        }
+        int res = 0;
+        for (int e : toHash) {
+            res = (1LL * res * BASE + e) % MOD;
         }
         return res;
     }
@@ -71,14 +93,13 @@ Solution genSolution() {
     return res;
 }
 
-void readData(string dataPath) {
-    ifstream scanner(dataPath);
-    scanner >> n;
+void readData() {
+    cin >> n;
 
     c.resize(n, vector<int>(n, 0));
     
     for (auto &row : c) {
-        for (auto &e : row) scanner >> e;
+        for (auto &e : row) cin >> e;
     }
     
     return;
@@ -92,9 +113,10 @@ long long Rand(long long l, long long r) {
 
 void solve() {
 
-    readData("../data/sample_data");
+    readData();
     
     Solution bestSolution = genSolution();
+    int curBest = bestSolution.evaluate(c);
 
     // for (int i = 0; i < n; i++) {
     //     for (int j = 0; j < n ;j++) cout << c[i][j] << endl;
@@ -102,13 +124,28 @@ void solve() {
     
     for (int rep = 0; rep < REPS; rep++) {
         Solution curSolution = genSolution();
-        
+
+        deque<int> tabuList = {curSolution._hash()};
+        if (int foo = curSolution.evaluate(c); foo < curBest) {
+            bestSolution = curSolution;
+            curBest = foo; 
+        }
+
         int counter = 0;
+        int thisRoundBest = 1e9;
         for (int iter = 0; iter < NITERATIONS; iter++) {
-            if (counter == 5) break;
+            // cout << "#rep " << rep << " #iter " << iter << ' ' << curSolution.evaluate(c) << ' ' << "#thisRoundBest" << ' ' << thisRoundBest << endl;
+            if (counter == PATIENT) break;
             bool type = Rand(0, INT16_MAX) % 2;
             Solution tmpSol = curSolution;
-            int curCost = curSolution.evaluate(c);
+            // cout << "#iter " << iter << ' ' << tmpSol.evaluate(c) << endl;
+            int foo = curSolution.evaluate(c); 
+            if (foo < curBest) {
+                bestSolution = curSolution;
+                curBest = foo; 
+            }
+            thisRoundBest = min(thisRoundBest, foo);
+            int curCost = 1e9;
             pair<int, int> best = {-1, -1};
 
 
@@ -118,6 +155,17 @@ void solve() {
                         swap(tmpSol.round[i], tmpSol.round[j]);
                         tmpSol.preparePos();
                         int tmpCost = tmpSol.evaluate(c);
+                        int tmpHash = tmpSol._hash();
+                        bool inTabuList = false;
+                        for (int e : tabuList) {
+                            if (e == tmpHash) {
+                                inTabuList = true;
+                                break;
+                            }
+                        }
+                        if (inTabuList) {
+                            continue;
+                        }
                         if (tmpCost < curCost) {
                             curCost = tmpCost;
                             best = {i, j};
@@ -129,7 +177,16 @@ void solve() {
                     counter++;
                     continue;
                 }
+                if (curCost > thisRoundBest) {
+                    counter++;
+                }
+                if (curCost < thisRoundBest) {
+                    counter = 0;
+                }
+                
                 swap(curSolution.round[best.first], curSolution.round[best.second]);
+                tabuList.push_back(curSolution._hash());
+                if (tabuList.size() > TABU_LENGTH) tabuList.pop_front();
                 curSolution.preparePos();
             } else { // Swap home - guest
                 for (int i = 0; i < n; i++) {
@@ -140,6 +197,14 @@ void solve() {
                             }
                         }
                         tmpSol.preparePos();
+                        int tmpHash = tmpSol._hash();
+                        bool inTabuList = false;
+                        for (int e : tabuList) {
+                            if (e == tmpHash) {
+                                inTabuList = true;
+                            }
+                        }
+                        if (inTabuList == true) continue;
                         int tmpCost = tmpSol.evaluate(c);
                         if (tmpCost < curCost) {
                             curCost = tmpCost;
@@ -152,30 +217,35 @@ void solve() {
                     counter++;
                     continue;
                 }
+                if (curCost > thisRoundBest) {
+                    counter++;
+                }
+                if (curCost < thisRoundBest) {
+                    counter = 0;
+                }
                 for (int round = 1; round < 2 * n - 1; round++) {
                     for (auto &foo : curSolution.round[round]) {
                         if (foo == best || foo == make_pair(best.second, best.first)) swap(foo.first, foo.second);
                     }
                 }
                 curSolution.preparePos();
+                tabuList.push_back(curSolution._hash());
+                if (tabuList.size() > TABU_LENGTH) tabuList.pop_front();
             }
-
-            if (curSolution.evaluate(c) < bestSolution.evaluate(c)) bestSolution = curSolution;
-
-            counter = 0;
         }
     }
 
     cout << bestSolution.evaluate(c) << endl;
-    for (int i = 1; i < 2 * n - 1; i++) {
-        cout << "Round " << i << "th: ";
-        for (auto foo : bestSolution.round[i]) cout << "(" << foo.first << ' ' << foo.second << ")";
-        cout << endl;
-    } 
+    // for (int i = 1; i < 2 * n - 1; i++) {
+    //     cout << "Round " << i << "th: ";
+    //     for (auto foo : bestSolution.round[i]) cout << "(" << foo.first << ' ' << foo.second << ")";
+    //     cout << endl;
+    // } 
 }
 
 int main() {
     solve();    
+    cout << "Time elapsed: " << clock() / CLOCKS_PER_SEC << " seconds" << endl;
     cerr << "Time elapsed: " << clock() / CLOCKS_PER_SEC << " seconds" << endl;
     return 0;
 }

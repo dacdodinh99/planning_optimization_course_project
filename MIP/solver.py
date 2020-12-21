@@ -18,7 +18,7 @@ def read_data(data_path):
     return (n, c)
 
 def main():
-    n, c = read_data('../data/sample_data')
+    n, c = read_data('../data/n_10_mx_10')
 
     # Create the mip solver with the SCIP backend.
     solver = pywraplp.Solver.CreateSolver('SCIP')
