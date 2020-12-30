@@ -18,7 +18,7 @@ def read_data(data_path):
     return (n, c)
 
 def main():
-    n, c = read_data('../data/n_10_mx_10')
+    n, c = read_data('../data/data_6')
 
     # Create the mip solver with the SCIP backend.
     solver = pywraplp.Solver.CreateSolver('SCIP')
@@ -96,6 +96,7 @@ def main():
 
     # print(solver.Objective().Value())
 
+
     if status == pywraplp.Solver.OPTIMAL:
         print('Objective value =', solver.Objective().Value())
 
@@ -105,6 +106,22 @@ def main():
                     for j in range(n):
                         if X[slot][team][i][j].solution_value() == 1:
                             print(f'In round {slot}, team {team} move from {i} to {j}')
+        
+        for round in range(1, 2 * n - 1):
+            cur = [0 for i in range(n)]
+            for team in range(n):
+                for i in range(n):
+                    for j in range(n):
+                        if X[round][team][i][j].solution_value() == 1:
+                            cur[team] = j
+            opp = [0 for i in range(n)]
+            for team in range(n):
+                if team != cur[team]:
+                    print(f'({cur[team]}, {team})', end=' ')
+            
+            print()
+            
+            
 
         print()
         print('Problem solved in %f milliseconds' % solver.wall_time())
